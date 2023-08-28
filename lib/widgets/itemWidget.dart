@@ -1,15 +1,12 @@
+import 'package:certcons_proyecto/models/toolModel.dart';
 import 'package:flutter/material.dart';
 
 class ItemWidget extends StatelessWidget {
-  final String id;
-  final String name;
-  final String date;
+  final ToolModel toolModel;
 
   const ItemWidget({
     super.key,
-    required this.id,
-    required this.name,
-    required this.date,
+    required this.toolModel,
   });
 
   @override
@@ -26,16 +23,16 @@ class ItemWidget extends StatelessWidget {
                 border: Border.all(width: 2),
                 borderRadius: BorderRadius.circular(7),
                 image: DecorationImage(
-                  image: AssetImage('assets/${id}.png'),
+                  image: AssetImage('assets/${toolModel.id}.png'),
                 ),
               ),
             ),
           ),
           Text(
-            name,
+            toolModel.name,
             style: TextStyle(fontWeight: FontWeight.bold),
           ),
-          Text(date),
+          Text(toolModel.date),
         ],
       ),
     );

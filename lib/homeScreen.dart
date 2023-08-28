@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:certcons_proyecto/models/toolModel.dart';
 import 'package:certcons_proyecto/widgets/itemWidget.dart';
+import 'package:pull_down_button/pull_down_button.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -11,7 +12,7 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  List<ToolModel> toolsAvalibles = [
+  List<ToolModel> toolsAvailable = [
     ToolModel(id: '1', name: 'Pala', date: '13 feb 2022'),
     ToolModel(id: '2', name: 'Martillo', date: '20 ene 2022'),
     ToolModel(id: '3', name: 'Destornillador', date: '13 dic 2022'),
@@ -31,12 +32,44 @@ class _HomeScreenState extends State<HomeScreen> {
   List<ToolModel> toolsChosen = [];
 
   int quantityChosen = 0;
-  int quantityAvalibles = 0;
+  int quantityAvailable = 0;
+  void _showAlertDialog(BuildContext context, int index) {
+    showCupertinoModalPopup<void>(
+      context: context,
+      builder: (BuildContext context) => CupertinoAlertDialog(
+        title: const Text('Eliminar herramienta'),
+        content:
+            const Text('Estás seguro que quieres eliminar esta herramienta?'),
+        actions: <CupertinoDialogAction>[
+          CupertinoDialogAction(
+            isDefaultAction: true,
+            onPressed: () {
+              Navigator.pop(context);
+            },
+            child: const Text('No'),
+          ),
+          CupertinoDialogAction(
+            isDestructiveAction: true,
+            onPressed: () {
+              setState(() {
+                quantityAvailable++;
+                quantityChosen--;
+                toolsAvailable.add(toolsChosen[index]);
+                toolsChosen.removeAt(index);
+              });
+              Navigator.pop(context);
+            },
+            child: const Text('Yes'),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   void initState() {
     super.initState();
-    quantityAvalibles = toolsAvalibles.length;
+    quantityAvailable = toolsAvailable.length;
   }
 
   Widget adaptiveAction(
@@ -77,7 +110,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                   Text(
-                    quantityAvalibles.toString(),
+                    quantityAvailable.toString(),
                   ),
                 ],
               ),
@@ -93,43 +126,22 @@ class _HomeScreenState extends State<HomeScreen> {
                     Expanded(
                       child: ListView.builder(
                         scrollDirection: Axis.horizontal,
-                        itemCount: toolsAvalibles.length,
+                        itemCount: toolsAvailable.length,
                         itemBuilder: (context, index) {
-                          return GestureDetector(
-                            onTap: () {
-                              setState(() {
-                                if (quantityChosen != 10 ||
-                                    quantityChosen > 10) {
-                                  quantityAvalibles--;
-                                  quantityChosen++;
-                                  toolsChosen.add(toolsAvalibles[index]);
-                                  toolsAvalibles.removeAt(index);
-                                } else {
-                                  showAdaptiveDialog<String>(
-                                    context: context,
-                                    builder: (BuildContext context) =>
-                                        AlertDialog.adaptive(
-                                      title: const Text('Alerta'),
-                                      content: const Text(
-                                          'No puedes seleccionar más de 10 herramientas.'),
-                                      actions: <Widget>[
-                                        adaptiveAction(
-                                          context: context,
-                                          onPressed: () =>
-                                              Navigator.pop(context),
-                                          child: const Text('Aceptar'),
-                                        ),
-                                      ],
-                                    ),
-                                  );
-                                }
-                              });
-                            },
-                            child: ItemWidget(
-                              id: toolsAvalibles[index].id,
-                              name: toolsAvalibles[index].name,
-                              date: toolsAvalibles[index].date,
+                          return Draggable<ToolModel>(
+                            data: toolsAvailable[index],
+                            feedback: Container(
+                              width: 90,
+                              height: 90,
+                              child: Opacity(
+                                  opacity: 0.5,
+                                  child: Image(
+                                      image: AssetImage(
+                                          'assets/${toolsAvailable[index].id}.png'))),
                             ),
+                            childWhenDragging:
+                                Icon(Icons.drag_indicator, size: 50),
+                            child: ItemWidget(toolModel: toolsAvailable[index]),
                           );
                         },
                       ),
@@ -163,25 +175,66 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Row(
                   children: [
                     Expanded(
-                      child: ListView.builder(
-                        scrollDirection: Axis.horizontal,
-                        itemCount: toolsChosen.length,
-                        itemBuilder: (context, index) {
-                          return GestureDetector(
-                            onTap: () {
-                              setState(() {
-                                quantityAvalibles++;
-                                quantityChosen--;
-                                toolsAvalibles.add(toolsChosen[index]);
-                                toolsChosen.removeAt(index);
-                              });
-                            },
-                            child: ItemWidget(
-                              id: toolsChosen[index].id,
-                              name: toolsChosen[index].name,
-                              date: toolsChosen[index].date,
-                            ),
-                          );
+                      // Envolvemos el ListView en un widget DragTarget
+                      child: DragTarget<ToolModel>(
+                        // Definimos lo que pasa cuando aceptamos una herramienta que se arrastra sobre la lista
+                        onAccept: (tool) {
+                          // Actualizamos el estado de las listas y las cantidades
+                          setState(() {
+                            if (quantityChosen != 10 || quantityChosen > 10) {
+                              quantityAvailable--;
+                              quantityChosen++;
+                              toolsChosen.add(tool);
+                              toolsAvailable.remove(tool);
+                            } else {
+                              showDialog(
+                                context: context,
+                                builder: (context) => AlertDialog(
+                                  title: Text('Alerta'),
+                                  content: Text(
+                                      'No puedes seleccionar más de 10 herramientas.'),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(context),
+                                      child: Text('Aceptar'),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }
+                          });
+                        },
+
+                        builder: (context, candidateData, rejectedData) {
+                          return toolsChosen.isEmpty
+                              ? Center(child: Text('Arrastra aquí'))
+                              : ListView.builder(
+                                  scrollDirection: Axis.horizontal,
+                                  itemCount: toolsChosen.length,
+                                  itemBuilder: (context, index) {
+                                    return PullDownButton(
+                                      itemBuilder: (context) => [
+                                        PullDownMenuItem(
+                                          onTap: () {
+                                            _showAlertDialog(context, index);
+                                          },
+                                          title: 'Eliminar herramienta',
+                                          isDestructive: true,
+                                          icon: CupertinoIcons.delete,
+                                        )
+                                      ],
+                                      // position: PullDownMenuPosition.under,
+                                      buttonBuilder: (context, showMenu) =>
+                                          CupertinoButton(
+                                        onPressed: showMenu,
+                                        padding: EdgeInsets.zero,
+                                        child: ItemWidget(
+                                          toolModel: toolsChosen[index],
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                );
                         },
                       ),
                     ),
